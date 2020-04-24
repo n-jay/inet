@@ -22,7 +22,7 @@
 
 namespace inet {
 
-class INET_API OperationalBase : public cSimpleModule, public ILifecycle
+class INET_API OperationalBase0 : public ILifecycle
 {
   protected:
     enum State {
@@ -31,6 +31,7 @@ class INET_API OperationalBase : public cSimpleModule, public ILifecycle
     };
     State operationalState = NOT_OPERATING;
     simtime_t lastChange;
+    cSimpleModule& module;
 
     class INET_API Operation
     {
@@ -48,11 +49,11 @@ class INET_API OperationalBase : public cSimpleModule, public ILifecycle
     cMessage *activeOperationExtraTimer = nullptr;
 
   protected:
-    virtual int numInitStages() const override { return NUM_INIT_STAGES; }
-    virtual void initialize(int stage) override;
-    virtual void refreshDisplay() const override;
+    virtual int numInitStages() const { return NUM_INIT_STAGES; }
+    virtual void initialize(int stage);
+    virtual void refreshDisplay() const;
 
-    virtual void handleMessage(cMessage *msg) override;
+    virtual void handleMessage(cMessage *msg);
     virtual void handleMessageWhenDown(cMessage *msg);
     virtual void handleMessageWhenUp(cMessage *msg) = 0;
 
@@ -86,8 +87,22 @@ class INET_API OperationalBase : public cSimpleModule, public ILifecycle
     virtual void finishActiveOperation();
     /// }@
   public:
-    OperationalBase();
-    ~OperationalBase();
+    OperationalBase0(cSimpleModule& module);
+    ~OperationalBase0();
+};
+
+class INET_API OperationalBase : public cSimpleModule, public OperationalBase0
+{
+  protected:
+    virtual int numInitStages() const override { return OperationalBase0::numInitStages(); }
+    virtual void initialize(int stage) override { OperationalBase0::initialize(stage); }
+    virtual void refreshDisplay() const override { OperationalBase0::refreshDisplay(); }
+
+    virtual void handleMessage(cMessage *msg) override { OperationalBase0::handleMessage(msg); }
+
+  public:
+    OperationalBase() : OperationalBase0(static_cast<cSimpleModule&>(*this)) {}
+    virtual ~OperationalBase() {}
 };
 
 } // namespace inet
