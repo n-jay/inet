@@ -49,6 +49,9 @@ void TxConnectionManager::initialize(int stage)
                 propagateDatarate();
             }
         }
+        WATCH(bitrate);
+        WATCH(connected);
+        WATCH(disabled);
     }
     else if (stage == INITSTAGE_PHYSICAL_LAYER) {
         propagateStatus();
@@ -58,28 +61,31 @@ void TxConnectionManager::initialize(int stage)
 void TxConnectionManager::handleMessage(cMessage *msg)
 {
     cProgress *progress = check_and_cast<cProgress *>(msg);
-    if (connected) {
+    if (connected && !disabled) {
         switch(progress->getKind()) {
             case cProgress::PACKET_START:
-                delete txSignal;
+                ASSERT(txSignal == nullptr);
                 txSignal = check_and_cast<physicallayer::Signal *>(progress->getPacket()->dup());
                 txStartTime = simTime();
                 send(progress, physOutGate);
                 break;
             case cProgress::PACKET_PROGRESS:
+                ASSERT(txSignal != nullptr);
                 ASSERT(simTime() == txStartTime + progress->getTimePosition());
                 delete txSignal;
                 txSignal = check_and_cast<physicallayer::Signal *>(progress->getPacket()->dup());
                 send(progress, physOutGate);
                 break;
             case cProgress::PACKET_END:
+                ASSERT(txSignal != nullptr);
                 ASSERT(simTime() == txStartTime + progress->getTimePosition());
                 delete txSignal;
                 txSignal = nullptr;
                 txStartTime = -1;
                 send(progress, physOutGate);
                 break;
-            default: throw cRuntimeError("Unknown progress kind");
+            default:
+                throw cRuntimeError("Unknown progress kind %d", progress->getKind());
         }
     }
     else {
