@@ -16,6 +16,7 @@
 //
 
 #include "inet/common/ModuleAccess.h"
+#include "inet/common/PacketEventTag.h"
 #include "inet/queueing/common/PacketDelayer.h"
 
 namespace inet {
@@ -38,10 +39,11 @@ void PacketDelayer::pushPacket(Packet *packet, cGate *gate)
     Enter_Method("pushPacket");
     take(packet);
     EV_INFO << "Delaying packet " << packet->getName() << "." << endl;
-    packet->setArrival(getId(), inputGate->getId(), simTime());
-    scheduleAt(simTime() + par("delay"), packet);
+    simtime_t delay = par("delay");
+    scheduleAt(simTime() + delay, packet);
     numProcessedPackets++;
     processedTotalLength += packet->getTotalLength();
+    insertPacketEvent<DelayingTimeTag>(packet, PEK_DELAYED, delay / packet->getBitLength(), this);
     updateDisplayString();
 }
 

@@ -15,6 +15,7 @@
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
 
+#include "inet/common/PacketEventTag.h"
 #include "inet/common/Simsignals.h"
 #include "inet/queueing/server/PacketServer.h"
 
@@ -62,13 +63,14 @@ void PacketServer::startProcessingPacket()
 {
     packet = provider->pullPacket(inputGate->getPathStartGate());
     take(packet);
-    packet->setArrival(getId(), inputGate->getId(), simTime());
     EV_INFO << "Processing packet " << packet->getName() << " started." << endl;
 }
 
 void PacketServer::endProcessingPacket()
 {
     EV_INFO << "Processing packet " << packet->getName() << " ended.\n";
+    simtime_t processingTime = (simTime() - processingTimer->getSendingTime()) / packet->getBitLength();
+    insertPacketEvent<ProcessingTimeTag>(packet, PEK_PROCESSED, processingTime, this);
     processedTotalLength += packet->getDataLength();
     emit(packetServedSignal, packet);
     pushOrSendPacket(packet, outputGate, consumer);

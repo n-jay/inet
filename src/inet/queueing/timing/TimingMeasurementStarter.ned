@@ -15,15 +15,18 @@
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
 
-package inet.protocol.ethernet;
+package inet.queueing.timing;
 
-import inet.queueing.base.PacketFilterBase;
-import inet.queueing.contract.IPacketFilter;
+import inet.queueing.base.PacketFlowBase;
+import inet.queueing.contract.IPacketFlow;
 
-simple EthernetFcsChecker extends PacketFilterBase like IPacketFilter
+simple TimingMeasurementStarter extends PacketFlowBase like IPacketFlow
 {
     parameters:
-        bool popFcs = default(true);
-        @class(EthernetFcsChecker);
-        @display("i=block/checker");
+        int offset @unit(b) = default(0b);
+        int length @unit(b) = default(-1b);
+        string label = default("");
+        string measure = default("*");
+        @class(TimingMeasurementStarter);
+        @display("i=block/timer");
 }

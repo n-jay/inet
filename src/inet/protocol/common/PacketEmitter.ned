@@ -18,13 +18,14 @@
 package inet.protocol.common;
 
 import inet.queueing.base.PacketFlowBase;
+import inet.queueing.contract.IPacketFlow;
 
-simple PacketEmitter extends PacketFlowBase
+simple PacketEmitter extends PacketFlowBase like IPacketFlow
 {
     parameters:
         string packetFilter = default("*"); // which packets are considered, matches all packets by default
         string packetDataFilter = default("*"); // which packets are considered based on the data they contain, matches all packets by default
-        string direction @enum("undefined", "inbound", "outbound") = default("undefined");
+        string direction @enum("undefined","inbound","outbound") = default("undefined");
         string protocolName;
         string signalName;
         @class(PacketEmitter);
