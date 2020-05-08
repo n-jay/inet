@@ -25,14 +25,29 @@ import inet.protocol.common.InterPacketGap;
 import inet.protocol.common.PacketSerializer;
 import inet.protocol.common.PacketTrimmer;
 import inet.protocol.common.PaddingInserter;
-import inet.protocol.common.SimpleInOut;
 import inet.protocol.connectionmanager.ConnectionManager;
 import inet.protocol.transceiver.StreamingReceiver;
 import inet.protocol.transceiver.StreamingTransmitter;
+import inet.queueing.contract.IPacketQueue;
 import inet.queueing.contract.ITrafficConditioner;
-import inet.queueing.queue.PacketQueue;
 import inet.queueing.server.InstantServer;
 
+module EthFakeMac
+{
+    parameters:
+    gates:
+        input in;
+        output out;
+    submodules:
+        queue: <default("EtherQueue")> like IPacketQueue {
+            parameters:
+                packetCapacity = default(1000);
+                @display("p=100,100");
+        }
+    connections:
+        in--> { @display("m=n"); }  --> queue.in;
+        queue.out--> { @display("m=s"); }  --> out;
+}
 
 module EthernetInterfaceEnc extends InterfaceEntry like IEthernetInterface
 {
@@ -77,7 +92,7 @@ module EthernetInterfaceEnc extends InterfaceEntry like IEthernetInterface
             parameters:
                 @display("p=350,250");
         }
-        queue: PacketQueue {
+        mac: EthFakeMac {
             parameters:
                 @display("p=200,300");
         }
@@ -143,9 +158,9 @@ module EthernetInterfaceEnc extends InterfaceEntry like IEthernetInterface
         ingressTC.out --> { @display("m=n"); } --> upperLayerOut;
 
         encap.lowerLayerOut --> qEncap.upperLayerIn;
-        qEncap.lowerLayerOut --> queue.in;
+        qEncap.lowerLayerOut --> mac.in;
 
-        queue.out --> server.in;
+        mac.out --> server.in;
         server.out --> fcsDropper.in;
         fcsDropper.out --> packetTrimmer.in;
         packetTrimmer.out --> padding.in;
