@@ -202,5 +202,14 @@ void InterPacketGap::pushOrSendOrScheduleProgress(Packet *packet, cGate *gate, i
     }
 }
 
+void InterPacketGap::refreshDisplay() const
+{
+    PacketPusherBase::refreshDisplay();
+
+    char buf[40];
+    sprintf(buf, "ifg: %f ns", par("duration").doubleValue()*1e9);
+    getDisplayString().setTagArg("t", 0, buf);
+}
+
 } // namespace inet
 
