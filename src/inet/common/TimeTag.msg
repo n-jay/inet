@@ -12,14 +12,14 @@ class CreationTimeTag extends TagBase
     simtime_t creationTime = simTime();
 }
 
-class ElapsedTimeTag extends TagBase
-{
-    simtime_t startTime = simTime();
-}
-
 class TimeTagBase extends TagBase
 {
-    simtime_t totalTime;
+    string labels[];
+    simtime_t times[];
+}
+
+class ElapsedTimeTag extends TimeTagBase
+{
 }
 
 class DelayingTimeTag extends TimeTagBase

@@ -18,6 +18,7 @@
 #ifndef __INET_TIMINGMEASUREMENTSTARTER_H
 #define __INET_TIMINGMEASUREMENTSTARTER_H
 
+#include "inet/common/ProtocolTag_m.h"
 #include "inet/queueing/base/PacketFlowBase.h"
 
 namespace inet {
@@ -26,9 +27,9 @@ namespace queueing {
 class INET_API TimingMeasurementStarter : public PacketFlowBase
 {
   protected:
-    const char *label = nullptr;
     b offset = b(0);
     b length = b(-1);
+    const char *label = nullptr;
     bool measureElapsedTime = false;
     bool measureDelayingTime = false;
     bool measureQueueingTime = false;
@@ -40,20 +41,19 @@ class INET_API TimingMeasurementStarter : public PacketFlowBase
     virtual void initialize(int stage) override;
 
     template <typename T>
-    void startMeasurement(Packet *packet, const Ptr<Chunk>& data, b offset, b length, const char *label) {
+    void startMeasurement(Packet *packet, const Ptr<Chunk>& data, b offset, b length, const char *label, simtime_t value) {
         if (length == b(-1))
             length = data->getChunkLength();
         EV_INFO << "Starting measurement on packet " << packet->getName() << ": "
-                << "range (" << offset << ", " << offset + length << "), "
-                << "class = " << T::getClassName() << std::endl;
-        if (*label == '\0')
-            data->addTag<T>(offset, length);
-        else {
-            // KLUDGE: horrible
-            auto flowTagSet = data->getNumTags() == 1 ? data->addTagIfAbsent<FlowTagSet>(offset, length) : const_cast<FlowTagSet *>(check_and_cast<const FlowTagSet *>(data->getTag(1)));
-            flowTagSet->insertLabels(label);
-            flowTagSet->insertTags(new T());
-        }
+                << "range (" << offset << ", " << offset + length << "), ";
+        if (label != nullptr && *label != '\0')
+            EV_INFO << "label = " << label << ", ";
+        EV_INFO << "class = " << T::getClassName() << std::endl;
+        // KLUDGE: horrible
+        auto packetProtocolTag = packet->findTag<PacketProtocolTag>();
+        auto timeTag = packetProtocolTag != nullptr ? data->addTagIfAbsent<T>(offset + B(42), length - B(46)) : data->addTagIfAbsent<T>(offset, length);
+        timeTag->insertLabels(label);
+        timeTag->insertTimes(value);
     }
 
   public:

@@ -16,7 +16,6 @@
 #ifndef __INET_TIMETAG_H
 #define __INET_TIMETAG_H
 
-#include "inet/common/FlowTagSet_m.h"
 #include "inet/common/packet/Packet.h"
 #include "inet/common/TimeTag_m.h"
 
@@ -26,14 +25,8 @@ template <typename T>
 void increaseTimeTag(const Ptr<Chunk>& data, simtime_t duration)
 {
     data->mapAllTags<T>(b(0), b(-1), [&] (b offset, b length, T *timeTag) {
-        timeTag->setTotalTime(timeTag->getTotalTime() + duration);
-    });
-    data->mapAllTags<FlowTagSet>(b(0), b(-1), [&] (b offset, b length, FlowTagSet *flowTagSet) {
-        for (int i = 0; i < (int)flowTagSet->getTagsArraySize(); i++) {
-            auto tag = flowTagSet->getTagsForUpdate(i);
-            if (auto timeTag = dynamic_cast<T *>(tag))
-                timeTag->setTotalTime(timeTag->getTotalTime() + duration);
-        }
+        for (int i = 0; i < (int)timeTag->getTimesArraySize(); i++)
+            timeTag->setTimes(i, timeTag->getTimes(i) + duration);
     });
 }
 

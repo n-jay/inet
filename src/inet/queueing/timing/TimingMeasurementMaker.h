@@ -52,7 +52,40 @@ class INET_API TimingMeasurementMaker : public PacketFlowBase
   protected:
     virtual void initialize(int stage) override;
     virtual void makeMeasurement(Packet *packet, b offset, b length, const char *label, simsignal_t signal, simtime_t value);
-    virtual void makeMeasurement(Packet *packet, b offset, b length, const char *label, const TimeTagBase *timeTag);
+
+    template <typename T>
+    void makeMeasurement(Packet *packet, const Ptr<const Chunk>& data, b offset, b length, simsignal_t signal) {
+        data->mapAllTags<T>(offset, length, [&] (b offset, b length, const T *timeTag) {
+            for (int i = 0; i < (int)timeTag->getTimesArraySize(); i++) {
+                auto label = timeTag->getLabels(i);
+                cMatchableString matchableLabel(label);
+                if (labelMatcher.matches(&matchableLabel)) {
+                    cNamedObject signalDetails(label);
+                    makeMeasurement(packet, offset, length, label, signal, timeTag->getTimes(i));
+                }
+            }
+        });
+    }
+
+    template <typename T>
+    void stopMeasurement(Packet *packet, const Ptr<Chunk>& data, b offset, b length) {
+        data->mapAllTags<T>(offset, length, [&] (b offset, b length, T *timeTag) {
+            for (int i = 0; i < (int)timeTag->getTimesArraySize(); i++) {
+                auto label = timeTag->getLabels(i);
+                cMatchableString matchableLabel(label);
+                if (labelMatcher.matches(&matchableLabel)) {
+                    EV_INFO << "Stopping measurement on packet " << packet->getName() << ": "
+                            << "range (" << offset << ", " << offset + length << "), ";
+                    if (label != nullptr && *label != '\0')
+                        EV_INFO << "label = " << label;
+                    EV_INFO << std::endl;
+                    timeTag->eraseLabels(i);
+                    timeTag->eraseTimes(i);
+                    break;
+                }
+            }
+        });
+    }
 
   public:
     virtual void processPacket(Packet *packet) override;

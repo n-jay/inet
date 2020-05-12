@@ -15,7 +15,6 @@
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
 
-#include "inet/common/FlowTagSet_m.h"
 #include "inet/common/TimeTag_m.h"
 #include "inet/queueing/timing/TimingMeasurementStarter.h"
 
@@ -51,34 +50,18 @@ void TimingMeasurementStarter::initialize(int stage)
 void TimingMeasurementStarter::processPacket(Packet *packet)
 {
     auto& data = packet->removeAll();
-    if (*label == '\0') {
-        if (measureElapsedTime)
-            startMeasurement<ElapsedTimeTag>(packet, data, offset, length, nullptr);
-        if (measureDelayingTime)
-            startMeasurement<DelayingTimeTag>(packet, data, offset, length, nullptr);
-        if (measureQueueingTime)
-            startMeasurement<QueueingTimeTag>(packet, data, offset, length, nullptr);
-        if (measureProcessingTime)
-            startMeasurement<ProcessingTimeTag>(packet, data, offset, length, nullptr);
-        if (measureTransmissionTime)
-            startMeasurement<TransmissionTimeTag>(packet, data, offset, length, nullptr);
-        if (measurePropagationTime)
-            startMeasurement<PropagationTimeTag>(packet, data, offset, length, nullptr);
-    }
-    else {
-        if (measureElapsedTime)
-            startMeasurement<ElapsedTimeTag>(packet, data, offset, length, label);
-        if (measureDelayingTime)
-            startMeasurement<DelayingTimeTag>(packet, data, offset, length, label);
-        if (measureQueueingTime)
-            startMeasurement<QueueingTimeTag>(packet, data, offset, length, label);
-        if (measureProcessingTime)
-            startMeasurement<ProcessingTimeTag>(packet, data, offset, length, label);
-        if (measureTransmissionTime)
-            startMeasurement<TransmissionTimeTag>(packet, data, offset, length, label);
-        if (measurePropagationTime)
-            startMeasurement<PropagationTimeTag>(packet, data, offset, length, label);
-    }
+    if (measureElapsedTime)
+        startMeasurement<ElapsedTimeTag>(packet, data, offset, length, label, simTime());
+    if (measureDelayingTime)
+        startMeasurement<DelayingTimeTag>(packet, data, offset, length, label, 0);
+    if (measureQueueingTime)
+        startMeasurement<QueueingTimeTag>(packet, data, offset, length, label, 0);
+    if (measureProcessingTime)
+        startMeasurement<ProcessingTimeTag>(packet, data, offset, length, label, 0);
+    if (measureTransmissionTime)
+        startMeasurement<TransmissionTimeTag>(packet, data, offset, length, label, 0);
+    if (measurePropagationTime)
+        startMeasurement<PropagationTimeTag>(packet, data, offset, length, label, 0);
     packet->insertAtBack(data);
 }
 

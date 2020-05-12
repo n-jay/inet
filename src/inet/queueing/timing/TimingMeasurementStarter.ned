@@ -23,10 +23,10 @@ import inet.queueing.contract.IPacketFlow;
 simple TimingMeasurementStarter extends PacketFlowBase like IPacketFlow
 {
     parameters:
-        int offset @unit(b) = default(0b);
-        int length @unit(b) = default(-1b);
-        string label = default("");
-        string measure = default("*");
+        int offset @unit(b) = default(0b); // designates the packet part to be measured
+        int length @unit(b) = default(-1b); // designates the packet part to be measured
+        string label = default(""); // attach label to separate measurement
+        string measure = default("*"); // match expression for a combination of: elapsedTime, delayingTime, queueingTime, processingTime, transmissionTime, propagationTime
         @class(TimingMeasurementStarter);
         @display("i=block/timer");
 }

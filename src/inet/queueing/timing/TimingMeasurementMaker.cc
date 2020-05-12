@@ -15,7 +15,6 @@
 // along with this program; if not, see http://www.gnu.org/licenses/.
 //
 
-#include "inet/common/FlowTagSet_m.h"
 #include "inet/queueing/timing/TimingMeasurementMaker.h"
 
 namespace inet {
@@ -61,42 +60,47 @@ void TimingMeasurementMaker::initialize(int stage)
 void TimingMeasurementMaker::processPacket(Packet *packet)
 {
     const auto& data = packet->peekData();
-    if (*label == '\0') {
-        if (measureLifeTime)
-            data->mapAllTags<CreationTimeTag>(offset, length, [&] (b offset, b length, const CreationTimeTag *timeTag) {
-                makeMeasurement(packet, offset, length, nullptr, lifeTimeSignal, simTime() - timeTag->getCreationTime());
-            });
-        if (measureElapsedTime)
-            data->mapAllTags<ElapsedTimeTag>(offset, length, [&] (b offset, b length, const ElapsedTimeTag *timeTag) {
-                makeMeasurement(packet, offset, length, nullptr, elapsedTimeSignal, simTime() - timeTag->getStartTime());
-            });
-        data->mapAllTags<TimeTagBase>(offset, length, [&] (b offset, b length, const TimeTagBase *timeTag) {
-            makeMeasurement(packet, offset, length, nullptr, timeTag);
+    if (measureLifeTime)
+        data->mapAllTags<CreationTimeTag>(offset, length, [&] (b offset, b length, const CreationTimeTag *timeTag) {
+            makeMeasurement(packet, offset, length, nullptr, lifeTimeSignal, simTime() - timeTag->getCreationTime());
         });
-    }
-    else {
-        data->mapAllTags<FlowTagSet>(offset, length, [&] (b offset, b length, const FlowTagSet *flowTagSet) {
-            for (int i = 0; i < (int)flowTagSet->getLabelsArraySize(); i++) {
-                auto label = flowTagSet->getLabels(i);
-                auto tag = flowTagSet->getTags(i);
+    if (measureElapsedTime) {
+        data->mapAllTags<ElapsedTimeTag>(offset, length, [&] (b offset, b length, const ElapsedTimeTag *timeTag) {
+            for (int i = 0; i < (int)timeTag->getTimesArraySize(); i++) {
+                auto label = timeTag->getLabels(i);
                 cMatchableString matchableLabel(label);
                 if (labelMatcher.matches(&matchableLabel)) {
                     cNamedObject signalDetails(label);
-                    if (auto timeTag = dynamic_cast<const CreationTimeTag *>(tag)) {
-                        if (measureLifeTime)
-                            makeMeasurement(packet, offset, length, label, lifeTimeSignal, simTime() - timeTag->getCreationTime());
-                    }
-                    else if (auto timeTag = dynamic_cast<const ElapsedTimeTag *>(tag)) {
-                        if (measureElapsedTime)
-                            makeMeasurement(packet, offset, length, label, elapsedTimeSignal, simTime() - timeTag->getStartTime());
-                    }
-                    else if (auto timeTag = dynamic_cast<const TimeTagBase *>(tag))
-                        makeMeasurement(packet, offset, length, label, timeTag);
-                    else
-                        throw cRuntimeError("Unknown tag");
+                    makeMeasurement(packet, offset, length, label, elapsedTimeSignal, simTime() - timeTag->getTimes(i));
                 }
             }
         });
+    }
+    if (measureDelayingTime)
+        makeMeasurement<DelayingTimeTag>(packet, data, offset, length, delayingTimeSignal);
+    if (measureQueueingTime)
+        makeMeasurement<QueueingTimeTag>(packet, data, offset, length, queueingTimeSignal);
+    if (measureProcessingTime)
+        makeMeasurement<ProcessingTimeTag>(packet, data, offset, length, processingTimeSignal);
+    if (measureTransmissionTime)
+        makeMeasurement<TransmissionTimeTag>(packet, data, offset, length, transmissionTimeSignal);
+    if (measurePropagationTime)
+        makeMeasurement<PropagationTimeTag>(packet, data, offset, length, propagationTimeSignal);
+    if (finish) {
+        auto& data = packet->removeAll();
+        if (measureElapsedTime)
+            stopMeasurement<ElapsedTimeTag>(packet, data, offset, length);
+        if (measureDelayingTime)
+            stopMeasurement<DelayingTimeTag>(packet, data, offset, length);
+        if (measureQueueingTime)
+            stopMeasurement<QueueingTimeTag>(packet, data, offset, length);
+        if (measureProcessingTime)
+            stopMeasurement<ProcessingTimeTag>(packet, data, offset, length);
+        if (measureTransmissionTime)
+            stopMeasurement<TransmissionTimeTag>(packet, data, offset, length);
+        if (measurePropagationTime)
+            stopMeasurement<PropagationTimeTag>(packet, data, offset, length);
+        packet->insertAtBack(data);
     }
 }
 
@@ -104,38 +108,12 @@ void TimingMeasurementMaker::makeMeasurement(Packet *packet, b offset, b length,
 {
     EV_INFO << "Making measurement on packet " << packet->getName() << ": "
             << "range (" << offset << ", " << offset + length << "), ";
-    if (label != nullptr)
+    if (label != nullptr && *label != '\0')
         EV_INFO << "label = " << label << ", ";
-    EV_INFO << "signal = " << cComponent::getSignalName(signal) << ", ";
-    EV_INFO << "value = " << value << std::endl;
+    EV_INFO << "signal = " << cComponent::getSignalName(signal) << ", "
+            << "value = " << value << std::endl;
     cNamedObject signalDetails(label);
     emit(signal, value, &signalDetails);
-}
-
-void TimingMeasurementMaker::makeMeasurement(Packet *packet, b offset, b length, const char *label, const TimeTagBase *timeTag)
-{
-    if (dynamic_cast<const DelayingTimeTag *>(timeTag)) {
-        if (measureDelayingTime)
-            return makeMeasurement(packet, offset, length, label, delayingTimeSignal, timeTag->getTotalTime());
-    }
-    else if (dynamic_cast<const QueueingTimeTag *>(timeTag)) {
-        if (measureQueueingTime)
-            return makeMeasurement(packet, offset, length, label, queueingTimeSignal, timeTag->getTotalTime());
-    }
-    else if (dynamic_cast<const ProcessingTimeTag *>(timeTag)) {
-        if (measureProcessingTime)
-            return makeMeasurement(packet, offset, length, label, processingTimeSignal, timeTag->getTotalTime());
-    }
-    else if (dynamic_cast<const TransmissionTimeTag *>(timeTag)) {
-        if (measureTransmissionTime)
-            return makeMeasurement(packet, offset, length, label, transmissionTimeSignal, timeTag->getTotalTime());
-    }
-    else if (dynamic_cast<const PropagationTimeTag *>(timeTag)) {
-        if (measurePropagationTime)
-            return makeMeasurement(packet, offset, length, label, propagationTimeSignal, timeTag->getTotalTime());
-    }
-    else
-        throw cRuntimeError("Unknown tag");
 }
 
 } // namespace queueing
